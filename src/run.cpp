@@ -44,6 +44,8 @@ namespace owl {
 	}
 
 	int run(std::string video_url, std::string pi_addr, int pi_port) {
+		(void)pi_addr;
+		(void)pi_port;
 
 		// Attempt to open a video capture
 		cv::VideoCapture vcap(video_url);
@@ -58,16 +60,31 @@ namespace owl {
 		bool running = true;
 		while (running) {
 
-			// Display the current frame
+			// Get the current frame, flip it and split it
 			frame_lock.lock();
-			if (frame != nullptr)
-				cv::imshow("Image", *frame);
-			frame_lock.unlock();
+			if (frame != nullptr) { // it's a valid frame
+				cv::Mat flipped_frame;
+				cv::flip(*frame, flipped_frame, 1);
+				frame_lock.unlock();
+
+				cv::Mat cam_frames[2];
+				cam_frames[0] = flipped_frame(cv::Rect(0, 0, 640, 480));
+				cam_frames[1] = flipped_frame(cv::Rect(640, 0, 640, 480));
+
+				cv::imshow("Left Camera (0)", cam_frames[0]);
+				cv::imshow("Right Camera (1)", cam_frames[1]);
+			}
+			else {
+				frame_lock.unlock();
+			}
 
 			// Wait for 1 ms or until a key is pressed
 			switch (auto key = cv::waitKey(1)) {
 				case 'q': running = false; break;
-				default: break;
+				default: {
+					std::cerr << "Unrecognised key '" << key << "' pressed." << std::endl;
+					break;
+				}
 			};
 		}
 
