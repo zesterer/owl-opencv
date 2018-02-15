@@ -20,19 +20,20 @@ DATA_DIR = $(SRC_ROOT)/data
 # Libraries
 # ---------
 
-# GLFW
-#INC_DIRS += glfw
-#ifeq ($(PLATFORM), win64)
-#	LINK_LIBS += glfw3dll
-#else
-#	LINK_LIBS += glfw
-#endif
+# OpenCV
+INC_FLAGS += $(shell pkg-config --cflags opencv)
+ifeq ($(PLATFORM), win64)
+	LINK_LIBS += 
+else
+	LD_FLAGS += $(shell pkg-config --libs opencv)
+endif
 
 # C++ Flags
 # ---------
 
 INC_DIRS += $(SRC_ROOT)/include
 CPP_FLAGS += $(addprefix -I, $(INC_DIRS))
+CPP_FLAGS += $(INC_FLAGS)
 
 CPP_FLAGS += -std=c++17 -Wall -Wextra
 ifeq ($(BUILD_TYPE), release)
@@ -45,8 +46,9 @@ endif
 # Link Flags
 # ----------
 
-LINK_FLAGS += -pedantic
+LINK_FLAGS = -pedantic
 LINK_FLAGS += $(addprefix -l, $(LINK_LIBS))
+LINK_FLAGS += $(LD_FLAGS)
 LINK_FLAGS += -lpthread -lm
 
 # Tools

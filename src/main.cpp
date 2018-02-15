@@ -10,7 +10,7 @@ namespace owl {
 		std::cout << "Usage: owl [OPTIONS]" << std::endl;
 		std::cout << "OPTIONS:" << std::endl;
 		std::cout << "  --help             Display this help message" << std::endl;
-		std::cout << "  --video-src <url>  Specify the video stream URL" << std::endl;
+		std::cout << "  --video-url <url>  Specify the video stream URL" << std::endl;
 		std::cout << "  --pi-addr   <addr> Specify the Raspberry Pi's IP address" << std::endl;
 		std::cout << "  --pi-port   <port> Specify the Raspberry Pi's command port" << std::endl;
 	}
@@ -27,7 +27,7 @@ namespace owl {
 
 			switch (state) {
 				case ArgState::DEFAULT: {
-					if (arg == "--video-src") {
+					if (arg == "--video-url") {
 						state = ArgState::VIDEO_URL;
 					}
 					else if (arg == "--pi-addr") {
