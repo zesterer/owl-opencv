@@ -35,7 +35,7 @@ INC_DIRS += $(SRC_ROOT)/include
 CPP_FLAGS += $(addprefix -I, $(INC_DIRS))
 CPP_FLAGS += $(INC_FLAGS)
 
-CPP_FLAGS += -std=c++17 -Wall -Wextra
+CPP_FLAGS += -std=c++11 -Wall -Wextra
 ifeq ($(BUILD_TYPE), release)
 	CPP_FLAGS += -O3
 else ifeq ($(BUILD_TYPE), debug)

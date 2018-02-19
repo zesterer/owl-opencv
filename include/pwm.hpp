@@ -1,15 +1,6 @@
 #ifndef OWL_HPP_PWM
 #define OWL_HPP_PWM
 
-// Std
-#include <mutex>
-#include <thread>
-#include <atomic>
-#include <string>
-#include <cstdlib>
-#include <optional>
-#include <iostream>
-
 using socket_t = int;
 
 namespace owl {

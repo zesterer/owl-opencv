@@ -11,8 +11,11 @@
 #include <string>
 #include <sstream>
 #include <cstdlib>
-#include <optional>
 #include <iostream>
+
+#if __cplusplus >= 201703L
+	#include <optional>
+#endif
 
 using socket_t = int;
 
@@ -61,7 +64,11 @@ namespace owl {
 				this->sock = other.sock;
 			}
 
-			static std::optional<Connection> from(std::string addr, int port);
+			#if __cplusplus >= 201703L
+				static std::optional<Connection> from(std::string addr, int port);
+			#else
+				static Connection from(std::string addr, int port);
+			#endif
 	};
 }
 

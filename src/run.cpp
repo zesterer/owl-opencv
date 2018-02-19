@@ -42,12 +42,16 @@ namespace owl {
 	}
 
 	int run(std::string video_url, std::string ip, int port) {
-		auto tmp_conn = Connection::from(ip, port);
-		if (!tmp_conn) {
-			std::cerr << "Could not create connection to '" << ip << ":" << port << "'." << std::endl;
-			return 4;
-		}
-		Connection conn = std::move(*tmp_conn);
+		#if __cplusplus >= 201703L
+			auto tmp_conn = Connection::from(ip, port);
+			if (!tmp_conn) {
+				std::cerr << "Could not create connection to '" << ip << ":" << port << "'." << std::endl;
+				return 4;
+			}
+			Connection conn = std::move(*tmp_conn);
+		#else
+			Connection conn = Connection::from(ip, port);
+		#endif
 		conn.start();
 
 		// Attempt to open a video capture

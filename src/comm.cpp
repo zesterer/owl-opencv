@@ -9,6 +9,7 @@
 
 // Std
 #include <iostream>
+#include <cstdlib>
 
 namespace owl {
 	void Connection::out_func(Connection& conn) {
@@ -45,12 +46,20 @@ namespace owl {
 		}
 	}
 
-	std::optional<Connection> Connection::from(std::string ip, int port) {
+	#if __cplusplus >= 201703L
+		std::optional<Connection> Connection::from(std::string ip, int port) {
+	#else
+		Connection Connection::from(std::string ip, int port) {
+	#endif
 		// Attempt to create a new POSIX socket
 		socket_t tmp_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (tmp_sock < 0) {
 			std::cerr << "Failed to create POSIX socket." << std::endl;
-			return {};
+			#if __cplusplus >= 201703L
+				return {};
+			#else
+				exit(1);
+			#endif
 		}
 		else { // We have a valid socket
 			// Define the address we want to connect to
@@ -65,7 +74,11 @@ namespace owl {
 				sizeof(struct sockaddr)
 			) != 0) {
 				std::cerr << "Failed to connect to '" << ip << ":" << port << "'." << std::endl;
-				return {};
+				#if __cplusplus >= 201703L
+					return {};
+				#else
+					exit(1);
+				#endif
 			}
 			else {
 				return Connection(tmp_sock);

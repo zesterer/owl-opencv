@@ -5,7 +5,7 @@
 #include <string>
 
 namespace owl {
-	int run(std::string video_url, std::string pi_addr, int pi_port);
+	int run(std::string video_url, std::string addr, int port);
 }
 
 #endif
