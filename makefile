@@ -23,7 +23,7 @@ DATA_DIR = $(SRC_ROOT)/data
 # OpenCV
 INC_FLAGS += $(shell pkg-config --cflags opencv)
 ifeq ($(PLATFORM), win64)
-	LINK_LIBS += 
+	LINK_LIBS +=
 else
 	LD_FLAGS += $(shell pkg-config --libs opencv)
 endif
@@ -72,11 +72,6 @@ TOOL_DIR ?= $(abspath $(dir $(shell which $(CC))))
 # ------------
 
 SRC_RFILES += $(shell ls $(SRC_ROOT)/src/*.{s,S,c,cpp} 2> /dev/null)
-SRC_RFILES += $(shell ls $(SRC_ROOT)/src/util/*.{s,S,c,cpp} 2> /dev/null)
-SRC_RFILES += $(shell ls $(SRC_ROOT)/src/core/*.{s,S,c,cpp} 2> /dev/null)
-SRC_RFILES += $(shell ls $(SRC_ROOT)/src/engine/*.{s,S,c,cpp} 2> /dev/null)
-SRC_RFILES += $(shell ls $(SRC_ROOT)/src/gfx/*.{s,S,c,cpp} 2> /dev/null)
-SRC_RFILES += $(shell ls $(SRC_ROOT)/src/ui/*.{s,S,c,cpp} 2> /dev/null)
 
 SRC_FILES = $(abspath $(SRC_RFILES))
 

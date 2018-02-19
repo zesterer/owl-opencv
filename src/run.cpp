@@ -1,5 +1,6 @@
 // Local
 #include <run.hpp>
+#include <comm.hpp>
 
 // OpenCV
 #include <opencv2/core/core.hpp>
@@ -12,15 +13,10 @@
 #include <mutex>
 
 namespace owl {
-	struct Params {
-		struct { float x = 0.0f, y = 0.0f; } eye[2];
-		float neck = 0.0f;
-	};
-
 	std::mutex frame_lock;
 	cv::Mat frame_buff[2];
 	cv::Mat* frame = nullptr;
-	
+
 	void frame_thread_func(cv::VideoCapture& vcap) {
 		// Switch between frame_buff[0] and frame_buff[1] to avoid copying
 		for (int fb = 0;;fb = (fb == 0) ? 1 : 0) {
@@ -43,9 +39,13 @@ namespace owl {
 		}
 	}
 
-	int run(std::string video_url, std::string pi_addr, int pi_port) {
-		(void)pi_addr;
-		(void)pi_port;
+	int run(std::string video_url, std::string ip, int port) {
+		auto tmp_conn = Connection::from(ip, port);
+		if (!tmp_conn) {
+			std::cerr << "Could not create connection to '" << ip << ":" << port << "'." << std::endl;
+			return 4;
+		}
+		Connection connection = std::move(*tmp_conn);
 
 		// Attempt to open a video capture
 		cv::VideoCapture vcap(video_url);
@@ -80,6 +80,7 @@ namespace owl {
 
 			// Wait for 1 ms or until a key is pressed
 			switch (auto key = cv::waitKey(1)) {
+				case -1: break;
 				case 'q': running = false; break;
 				default: {
 					std::cerr << "Unrecognised key '" << key << "' pressed." << std::endl;
@@ -90,7 +91,7 @@ namespace owl {
 
 		// Deinit OpenCV
 		cv::destroyAllWindows();
-		
+
 		return 1;
 	}
 }

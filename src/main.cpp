@@ -11,16 +11,16 @@ namespace owl {
 		std::cout << "OPTIONS:" << std::endl;
 		std::cout << "  --help             Display this help message" << std::endl;
 		std::cout << "  --video-url <url>  Specify the video stream URL" << std::endl;
-		std::cout << "  --pi-addr   <addr> Specify the Raspberry Pi's IP address" << std::endl;
-		std::cout << "  --pi-port   <port> Specify the Raspberry Pi's command port" << std::endl;
+		std::cout << "  --ip        <addr> Specify the command server IP address" << std::endl;
+		std::cout << "  --port      <port> Specify the command server port" << std::endl;
 	}
 
 	extern "C" int main(int argc, char* argv[]) {
 		std::string video_url = "http://10.0.0.10:8080/stream/video.mjpeg";
-		std::string pi_addr = "10.0.0.10";
-		int pi_port = 12345;
+		std::string ip = "10.0.0.10";
+		int port = 12345;
 
-		enum class ArgState { DEFAULT, VIDEO_URL, PI_ADDR, PI_PORT };
+		enum class ArgState { DEFAULT, VIDEO_URL, IP, PORT };
 		ArgState state = ArgState::DEFAULT;
 		for (int i = 1; i < argc; i ++) {
 			auto arg = std::string(argv[i]);
@@ -30,11 +30,11 @@ namespace owl {
 					if (arg == "--video-url") {
 						state = ArgState::VIDEO_URL;
 					}
-					else if (arg == "--pi-addr") {
-						state = ArgState::PI_ADDR;
+					else if (arg == "--ip") {
+						state = ArgState::IP;
 					}
-					else if (arg == "--pi-port") {
-						state = ArgState::PI_PORT;
+					else if (arg == "--port") {
+						state = ArgState::PORT;
 					}
 					else if (arg == "--help") {
 						display_help();
@@ -53,15 +53,15 @@ namespace owl {
 					break;
 				}
 
-				case ArgState::PI_ADDR: {
-					pi_addr = arg;
+				case ArgState::IP: {
+					ip = arg;
 					state = ArgState::DEFAULT;
 					break;
 				}
 
-				case ArgState::PI_PORT: {
-					if (std::sscanf(arg.c_str(), "%d", &pi_port) != 1) {
-						std::cerr << "Expected integer after '--pi-port', not '" << arg << "'." << std::endl;
+				case ArgState::PORT: {
+					if (std::sscanf(arg.c_str(), "%d", &port) != 1) {
+						std::cerr << "Expected integer after '--port', not '" << arg << "'." << std::endl;
 						return 1;
 					}
 					state = ArgState::DEFAULT;
@@ -78,19 +78,19 @@ namespace owl {
 				return 1;
 			}
 
-			case ArgState::PI_ADDR: {
-				std::cerr << "Expected argument after '--pi-addr'" << std::endl;
+			case ArgState::IP: {
+				std::cerr << "Expected argument after '--ip'" << std::endl;
 				return 1;
 			}
 
-			case ArgState::PI_PORT: {
-				std::cerr << "Expected argument after '--pi-port'" << std::endl;
+			case ArgState::PORT: {
+				std::cerr << "Expected argument after '--port'" << std::endl;
 				return 1;
 			}
 
 			default: break;
 		}
 
-		return run(video_url, pi_addr, pi_port);
+		return run(video_url, ip, port);
 	}
 }
