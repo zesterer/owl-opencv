@@ -1,11 +1,15 @@
 #ifndef OWL_HPP_COMM
 #define OWL_HPP_COMM
 
+// Local
+#include <pwm.hpp>
+
 // Std
 #include <mutex>
 #include <thread>
 #include <atomic>
 #include <string>
+#include <sstream>
 #include <cstdlib>
 #include <optional>
 #include <iostream>
@@ -13,11 +17,6 @@
 using socket_t = int;
 
 namespace owl {
-	struct Params {
-		struct { float x = 0.0f, y = 0.0f; } eye[2];
-		float neck = 0.0f;
-	};
-
 	struct Connection {
 		private:
 			bool started = false;
@@ -27,9 +26,7 @@ namespace owl {
 			std::unique_lock<std::mutex> lock;
 			socket_t sock;
 
-			static void out_func(Connection& conn) {
-				// Nothing yet
-			}
+			static void out_func(Connection& conn);
 
 			Connection(socket_t sock) : sock(sock) {}
 		public:
@@ -49,6 +46,8 @@ namespace owl {
 			void start() {
 				this->started = true;
 				this->out_thread = std::thread(Connection::out_func, std::ref(*this));
+
+				this->set_params(CENTRE_PARAMS);
 			}
 
 			Connection (Connection&& other) {

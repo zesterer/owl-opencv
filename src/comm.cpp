@@ -11,6 +11,40 @@
 #include <iostream>
 
 namespace owl {
+	void Connection::out_func(Connection& conn) {
+		while (true) {
+			// Get target parameters
+			conn.lock.lock();
+			Params p = conn.tgt_params;
+			conn.lock.unlock();
+
+			// Construct PWM packet
+			std::stringstream packet;
+			packet <<
+				p.eyes[1].x << " " <<
+				p.eyes[1].y << " " <<
+				p.eyes[0].x << " " <<
+				p.eyes[0].y << " " <<
+				p.neck;
+
+			// Attempt to send the packet
+			int send_status = send(conn.sock, packet.str().c_str(), packet.str().length(), MSG_NOSIGNAL);
+			if (send_status == -1) {
+				std::cerr << "Failed to send connection packet" << std::endl;
+			}
+
+			// Receive a response
+			char recv_buff[2];
+			int recv_status = recv(conn.sock, recv_buff, sizeof(recv_buff) / sizeof(char), 0);
+			if (recv_status == -1) {
+				std::cerr << "Failed to receive response packet" << std::endl;
+			}
+
+			// Put the thread to sleep for a while
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+	}
+
 	std::optional<Connection> Connection::from(std::string ip, int port) {
 		// Attempt to create a new POSIX socket
 		socket_t tmp_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
