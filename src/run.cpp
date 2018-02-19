@@ -13,6 +13,8 @@
 #include <mutex>
 
 namespace owl {
+
+
 	std::mutex frame_lock;
 	cv::Mat frame_buff[2];
 	cv::Mat* frame = nullptr;
@@ -45,7 +47,8 @@ namespace owl {
 			std::cerr << "Could not create connection to '" << ip << ":" << port << "'." << std::endl;
 			return 4;
 		}
-		Connection connection = std::move(*tmp_conn);
+		Connection conn = std::move(*tmp_conn);
+		conn.start();
 
 		// Attempt to open a video capture
 		cv::VideoCapture vcap(video_url);
