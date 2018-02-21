@@ -61,7 +61,11 @@ namespace owl {
 			return 2;
 		}
 
+		// Spawn a thread to collect frames
 		std::thread frame_thread(frame_thread_func, std::ref(vcap));
+
+		// PWM parameters
+		Params params;
 
 		// Main execution loop
 		bool running = true;
@@ -85,15 +89,41 @@ namespace owl {
 				frame_lock.unlock();
 			}
 
-			// Wait for 1 ms or until a key is pressed
+			// Wait for 1 ms or handle any key presses
+			const int turn_rate = 10;
 			switch (auto key = cv::waitKey(1)) {
 				case -1: break;
-				case 'q': running = false; break;
+				case 'a': {
+					params.eyes[0].x -= turn_rate;
+					params.eyes[1].x -= turn_rate;
+					break;
+				}
+				case 'd': {
+					params.eyes[0].x += turn_rate;
+					params.eyes[1].x += turn_rate;
+					break;
+				}
+				case 's': {
+					params.eyes[0].y += turn_rate;
+					params.eyes[1].y -= turn_rate;
+					break;
+				}
+				case 'w': {
+					params.eyes[0].y -= turn_rate;
+					params.eyes[1].y += turn_rate;
+					break;
+				}
+				case 'q': params.neck += turn_rate; break;
+				case 'e': params.neck -= turn_rate; break;
+				case 'x': running = false; break;
 				default: {
 					std::cerr << "Unrecognised key '" << key << "' pressed." << std::endl;
 					break;
 				}
 			};
+
+			// Update PWM parameters
+			conn.set_params(params);
 		}
 
 		// Deinit OpenCV

@@ -1,11 +1,17 @@
 // Local
 #include <comm.hpp>
 
-// POSIX
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+// Lib
+
+#ifdef __WIN32__
+	#include <winsock2.h>
+	#include <windows.h>
+#else
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
 
 // Std
 #include <iostream>
