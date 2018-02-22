@@ -60,7 +60,7 @@ namespace owl {
 		// Attempt to create a new POSIX socket
 		socket_t tmp_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (tmp_sock < 0) {
-			std::cerr << "Failed to create POSIX socket." << std::endl;
+			std::cerr << "Failed to create POSIX socket: " << tmp_sock << std::endl;
 			#if __cplusplus >= 201703L
 				return {};
 			#else
@@ -74,12 +74,13 @@ namespace owl {
 			addr.sin_addr.s_addr = inet_addr(ip.c_str());
 			addr.sin_port = port;
 
-			if (connect(
+			int stat = connect(
 				tmp_sock,
 				(struct sockaddr*)&addr,
 				sizeof(struct sockaddr)
-			) != 0) {
-				std::cerr << "Failed to connect to '" << ip << ":" << port << "'." << std::endl;
+			);
+			if (stat != 0) {
+				std::cerr << "Failed to connect to '" << ip << ":" << port << "': " << stat << std::endl;
 				#if __cplusplus >= 201703L
 					return {};
 				#else
