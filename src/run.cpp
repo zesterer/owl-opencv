@@ -1,6 +1,6 @@
 // Local
 #include <run.hpp>
-#include "comm.hpp"
+#include <comm.hpp>
 
 // OpenCV
 #include <opencv2/core/core.hpp>
@@ -64,10 +64,7 @@ namespace owl {
         // Spawn a thread to collect frames
         std::thread frame_thread(frame_thread_func, std::ref(vcap));
 
-        // PWM parameters
-        Params params = Params::centre();
-
-        // Main execution loop
+		// Main execution loop
         bool running = true;
         while (running) {
 
@@ -87,7 +84,9 @@ namespace owl {
             }
             else {
                 frame_lock.unlock();
-            }
+			}
+
+			Params params = conn.get_params_lock();
 
             // Wait for 1 ms or handle any key presses
             const int turn_rate = 10;
@@ -130,15 +129,18 @@ namespace owl {
             };
 
             // Update PWM parameters
-            if (conn.get_params().mode == Params::Mode::CONTROL) {
-                conn.set_params(params);
-            }
-            else {
-                Params p= conn.get_params();
-                p.mode = params.mode;
-                conn.set_params(p);
-            }
-        }
+//            if (conn.get_params().mode == Params::Mode::CONTROL) {
+//                conn.set_params(params);
+//				params = conn.get_params();
+//            }
+//            else {
+//				Params p = conn.get_params();
+//                p.mode = params.mode;
+//                conn.set_params(p);
+//            }
+
+			conn.set_params_lock(params);
+		}
 
         // Deinit OpenCV
         cv::destroyAllWindows();

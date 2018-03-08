@@ -2,7 +2,7 @@
 #define OWL_HPP_COMM
 
 // Local
-#include "pwm.hpp"
+#include <pwm.hpp>
 
 // Std
 #include <mutex>
@@ -44,11 +44,21 @@ namespace owl {
                 return p;
             }
 
-            void set_params(const Params& p) {
-                this->lock.lock();
-                this->tgt_params = p;
+			Params get_params_lock() {
+				this->lock.lock();
+				return this->tgt_params;
+			}
+
+			void set_params(const Params& p) {
+				this->lock.lock();
+				this->tgt_params = p;
                 this->lock.unlock();
             }
+
+			void set_params_lock(const Params& p) {
+				this->tgt_params = p;
+				this->lock.unlock();
+			}
 
             void start() {
                 this->started = true;

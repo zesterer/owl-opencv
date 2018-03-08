@@ -39,6 +39,7 @@ namespace owl {
 			CRAZY,
 			CONFUSED,
 			NECK_SINUSOIDAL,
+			CORRELATION,
 		};
 
 		Eye eyes[2];

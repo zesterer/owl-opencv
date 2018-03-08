@@ -1,5 +1,5 @@
 // Local
-#include "comm.hpp"
+#include <comm.hpp>
 
 // Lib
 #ifdef __WIN32__
@@ -74,7 +74,8 @@ namespace owl {
                 params.eyes[1].y -= std::cos(PI * 2.0f * std::sin(t * 0.15f) * 0.4f) * 200.0f;
             }
             else if (params.mode == Params::Mode::CONFUSED) { //mode to copy motion of gif: https://media3.giphy.com/media/ZQrVQtav6gnzG/giphy.gif
-                switch (confused_state) {
+				params = Params::centre();
+				switch (confused_state) {
                 case ConfusedState::BTM_LEFT: { // Start bottom-left
                         params.eyes[0].x = EYE_L_X_MIN;
                         params.eyes[0].y = EYE_L_Y_MAX;
@@ -89,8 +90,7 @@ namespace owl {
                         break;
                     }
                 case ConfusedState::RIGHT: { // Look to the right
-                        params = Params::centre();
-                        params.eyes[0].x = EYE_L_X_MAX;
+						params.eyes[0].x = EYE_L_X_MAX;
                         params.eyes[1].x = EYE_R_X_MAX;
                         if (confused_hold < 50) {
                             confused_hold ++;
@@ -103,10 +103,10 @@ namespace owl {
                     }
                 case ConfusedState::ROLL: { // Roll the eyes
                         float nt = t + PI / 2.f;
-                        params.eyes[0].x += std::sin(nt) * 350.0f;
-                        params.eyes[0].y += std::cos(nt) * 350.0f;
-                        params.eyes[1].x += std::sin(nt) * 350.0f;
-                        params.eyes[1].y -= std::cos(nt) * 350.0f;
+						params.eyes[0].x += std::sin(nt) * 300.0f;
+						params.eyes[0].y += std::cos(nt) * 300.0f;
+						params.eyes[1].x += std::sin(nt) * 300.0f;
+						params.eyes[1].y -= std::cos(nt) * 300.0f;
                         if (std::fmod(t, 2 * PI) > PI) { // Stop roll at top-left (x-centre with +150 offset)
                             confused_hold = 0;
                             confused_state = ConfusedState::LEFT;
@@ -114,8 +114,7 @@ namespace owl {
                         break;
                     }
                 case ConfusedState::LEFT: { // Look to the left
-                        params = Params::centre();
-                        params.eyes[0].x = EYE_L_X_MIN;
+						params.eyes[0].x = EYE_L_X_MIN;
                         params.eyes[1].x = EYE_R_X_MIN;
                         if (confused_hold < 100) {
                             confused_hold ++;
@@ -126,8 +125,7 @@ namespace owl {
                         break;
                     }
                 default: { //Default to centre
-                        params = Params::centre();
-                        break;
+						break;
                     }
                 }
             }
