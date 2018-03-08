@@ -20,6 +20,8 @@
 #include <cmath>
 #include <errno.h>
 
+const float PI = 3.141592;
+
 namespace owl {
     std::mutex test_lock;
 
@@ -66,10 +68,10 @@ namespace owl {
             }
             else if (params.mode == Params::Mode::CRAZY) {
                 params = Params::centre();
-                params.eyes[0].x += std::sin(M_PI * 2.0f * std::sin(t * 0.2f) * 0.3f) * 200.0f;
-                params.eyes[0].y += std::cos(M_PI * 2.0f * std::sin(t * 0.25f) * 0.5f) * 200.0f;
-                params.eyes[1].x += std::sin(M_PI * 2.0f * std::sin(t * 0.3f) * 0.6f) * 200.0f;
-                params.eyes[1].y -= std::cos(M_PI * 2.0f * std::sin(t * 0.15f) * 0.4f) * 200.0f;
+                params.eyes[0].x += std::sin(PI * 2.0f * std::sin(t * 0.2f) * 0.3f) * 200.0f;
+                params.eyes[0].y += std::cos(PI * 2.0f * std::sin(t * 0.25f) * 0.5f) * 200.0f;
+                params.eyes[1].x += std::sin(PI * 2.0f * std::sin(t * 0.3f) * 0.6f) * 200.0f;
+                params.eyes[1].y -= std::cos(PI * 2.0f * std::sin(t * 0.15f) * 0.4f) * 200.0f;
             }
             else if (params.mode == Params::Mode::CONFUSED) { //mode to copy motion of gif: https://media3.giphy.com/media/ZQrVQtav6gnzG/giphy.gif
                 switch (confused_state) {
@@ -100,12 +102,12 @@ namespace owl {
                         break;
                     }
                 case ConfusedState::ROLL: { // Roll the eyes
-                        float nt = t + M_PI / 2.f;
+                        float nt = t + PI / 2.f;
                         params.eyes[0].x += std::sin(nt) * 350.0f;
                         params.eyes[0].y += std::cos(nt) * 350.0f;
                         params.eyes[1].x += std::sin(nt) * 350.0f;
                         params.eyes[1].y -= std::cos(nt) * 350.0f;
-                        if (std::fmod(t, 2 * M_PI) > M_PI) { // Stop roll at top-left (x-centre with +150 offset)
+                        if (std::fmod(t, 2 * PI) > PI) { // Stop roll at top-left (x-centre with +150 offset)
                             confused_hold = 0;
                             confused_state = ConfusedState::LEFT;
                         }

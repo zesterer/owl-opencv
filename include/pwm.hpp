@@ -31,10 +31,19 @@ namespace owl {
     };
 
     struct Params {
-        Eye eyes[2];
+		enum class Mode {
+			CONTROL,
+			SINUSOIDAL,
+			STEREO,
+			CHAMELEON,
+			CRAZY,
+			CONFUSED,
+			NECK_SINUSOIDAL,
+		};
+
+		Eye eyes[2];
         float neck = 0.0f;
-        enum class Mode { CONTROL, SINUSOIDAL, STEREO, CHAMELEON, CRAZY, CONFUSED, NECK_SINUSOIDAL };
-        Mode mode;
+		Mode mode;
 
         Params() {}
         Params(Eye eye_l, Eye eye_r, float neck) : neck(neck), mode(Mode::CONTROL) {
