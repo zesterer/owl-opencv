@@ -44,7 +44,7 @@ namespace owl {
 	namespace correl {
 		cv::Mat templ;
 		cv::Rect rect(320 - 32, 240 - 32, 64, 64);
-		Correl correl;
+		Correl correl[2];
 	}
 
 	int run(std::string video_url, std::string ip, int port) {
@@ -98,26 +98,31 @@ namespace owl {
 					cv::imshow("Correlation target", correl::templ);
 
 					// Attempt to match the correlation target
-					correl::correl = Correl::from_match(
-						cam_frames[0],
-						cam_frames[1],
-						correl::templ,
-						correl::rect
-					);
+					for (int i = 0; i < 2; i ++) {
+						correl::correl[i] = Correl::from_match(
+							cam_frames[i],
+							correl::templ,
+							correl::rect
+						);
+					}
 
-					cv::rectangle(
-						cam_frames[0],
-						correl::correl.match,
-						cv::Point(
-							correl::correl.match.x + correl::templ.cols,
-							correl::correl.match.y + correl::templ.rows
-						),
-						cv::Scalar(255, 0, 0), 2, 8, 0
-					);
+					for (int i = 0; i < 2; i ++) {
+						cv::rectangle(
+							cam_frames[i],
+							correl::correl[i].match,
+							cv::Point(
+								correl::correl[i].match.x + correl::templ.cols,
+								correl::correl[i].match.y + correl::templ.rows
+							),
+							cv::Scalar(255, 0, 0), 2, 8, 0
+						);
+					}
 				}
 
 				// Draw target rectangle
-				cv::rectangle(cam_frames[0], correl::rect, cv::Scalar::all(255), 2, 8, 0);
+				for (int i = 0; i < 2; i ++) {
+					cv::rectangle(cam_frames[i], correl::rect, cv::Scalar::all(255), 2, 8, 0);
+				}
 
 				cv::imshow("Left Camera (0)", cam_frames[0]);
 				cv::imshow("Right Camera (1)", cam_frames[1]);
@@ -172,8 +177,10 @@ namespace owl {
 
 			if (params.mode == Params::Mode::CORRELATION) {
 				// TODO: Add tracking code here
-				params.eyes[0].x += (correl::correl.match.x - correl::rect.x) * 0.1;
-				params.eyes[0].y += (correl::correl.match.y - correl::rect.y) * 0.1;
+				for (int i = 0; i < 2; i ++) {
+					params.eyes[i].x += (correl::correl[i].match.x - correl::rect.x) * 0.1;
+					params.eyes[i].y += (i == 0 ? 1 : -1) * (correl::correl[i].match.y - correl::rect.y) * 0.1;
+				}
 			}
 
 			conn.set_params_lock(params);

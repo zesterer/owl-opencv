@@ -22,11 +22,11 @@ namespace owl {
 	public:
 		Correl() {}
 
-		static Correl from_match(cv::Mat& left, cv::Mat& right, cv::Mat& templ, cv::Rect tgt) {
+		static Correl from_match(cv::Mat& img, cv::Mat& templ, cv::Rect tgt) {
 			// Create result matrix
 			int
-				res_cols = (left.cols - templ.cols) + 1,
-				res_rows = (left.rows - templ.rows) + 1;
+				res_cols = (img.cols - templ.cols) + 1,
+				res_rows = (img.rows - templ.rows) + 1;
 
 			// Initiate values
 			cv::Point match;
@@ -35,7 +35,7 @@ namespace owl {
 
 			// Match and normalise
 			int method = CV_TM_CCOEFF_NORMED;
-			cv::matchTemplate(left, templ, result, method);
+			cv::matchTemplate(img, templ, result, method);
 			cv::normalize(result, result, 0, 1, cv::NormTypes::NORM_MINMAX, -1, cv::Mat());
 
 			// Localise the best match
