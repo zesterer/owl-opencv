@@ -1,6 +1,7 @@
 // Local
 #include <run.hpp>
 #include <comm.hpp>
+#include <correl.hpp>
 
 // OpenCV
 #include <opencv2/core/core.hpp>
@@ -13,9 +14,7 @@
 #include <mutex>
 
 namespace owl {
-
-
-    std::mutex frame_lock;
+	std::mutex frame_lock;
 	cv::Mat frame_buff[2];
 	cv::Mat* frame = nullptr;
 
@@ -36,22 +35,29 @@ namespace owl {
 
 			// Put the thread to sleep for a little while
 			std::this_thread::sleep_for(
-			    std::chrono::milliseconds(10)
+				std::chrono::milliseconds(10)
 			);
 		}
 	}
 
+	// Correlation things
+	namespace correl {
+		cv::Mat templ;
+		cv::Rect rect(320 - 32, 240 - 32, 64, 64);
+		Correl correl;
+	}
+
 	int run(std::string video_url, std::string ip, int port) {
-        #if __cplusplus >= 201703L
-		    auto tmp_conn = Connection::from(ip, port);
+		#if __cplusplus >= 201703L
+			auto tmp_conn = Connection::from(ip, port);
 			if (!tmp_conn) {
 				std::cerr << "Could not create connection to '" << ip << ":" << port << "'." << std::endl;
 				return 4;
 			}
 			Connection conn = std::move(*tmp_conn);
-        #else
-		    Connection conn = Connection::from(ip, port);
-        #endif
+		#else
+			Connection conn = Connection::from(ip, port);
+		#endif
 		conn.start();
 
 		// Attempt to open a video capture
@@ -78,6 +84,40 @@ namespace owl {
 				cv::Mat cam_frames[2];
 				cam_frames[0] = flipped_frame(cv::Rect(0, 0, 640, 480));
 				cam_frames[1] = flipped_frame(cv::Rect(640, 0, 640, 480));
+
+				// Deal with correlation things
+				if (conn.get_params().mode == Params::Mode::CAPTURE) {
+					correl::templ = cam_frames[0](correl::rect);
+
+					// Now that we've captured the target, switch to correlation mode
+					Params p = conn.get_params();
+					p.mode = Params::Mode::CORRELATION;
+					conn.set_params(p);
+				}
+				else if (conn.get_params().mode == Params::Mode::CORRELATION) {
+					cv::imshow("Correlation target", correl::templ);
+
+					// Attempt to match the correlation target
+					correl::correl = Correl::from_match(
+						cam_frames[0],
+						cam_frames[1],
+						correl::templ,
+						correl::rect
+					);
+
+					cv::rectangle(
+						cam_frames[0],
+						correl::correl.match,
+						cv::Point(
+							correl::correl.match.x + correl::templ.cols,
+							correl::correl.match.y + correl::templ.rows
+						),
+						cv::Scalar(255, 0, 0), 2, 8, 0
+					);
+				}
+
+				// Draw target rectangle
+				cv::rectangle(cam_frames[0], correl::rect, cv::Scalar::all(255), 2, 8, 0);
 
 				cv::imshow("Left Camera (0)", cam_frames[0]);
 				cv::imshow("Right Camera (1)", cam_frames[1]);
@@ -119,14 +159,22 @@ namespace owl {
 					params.eyes[1].y += turn_rate;
 					break;
 				}
+				case 'r': params = Params::centre(); break;
 				case 'q': params.neck += turn_rate; break;
 				case 'e': params.neck -= turn_rate; break;
 				case 'x': running = false; break;
+				case 'c': params.mode = Params::Mode::CAPTURE; break;
 				default: {
 					std::cerr << "Unrecognised key '" << key << "' pressed." << std::endl;
 					break;
 				}
 			};
+
+			if (params.mode == Params::Mode::CORRELATION) {
+				// TODO: Add tracking code here
+				params.eyes[0].x += (correl::correl.match.x - correl::rect.x) * 0.1;
+				params.eyes[0].y += (correl::correl.match.y - correl::rect.y) * 0.1;
+			}
 
 			conn.set_params_lock(params);
 		}

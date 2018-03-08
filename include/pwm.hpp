@@ -39,6 +39,7 @@ namespace owl {
 			CRAZY,
 			CONFUSED,
 			NECK_SINUSOIDAL,
+			CAPTURE, // Used to initiate correlation
 			CORRELATION,
 		};
 
