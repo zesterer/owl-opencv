@@ -7,11 +7,14 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/videoio.hpp>
 
 // Std
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <algorithm>
 
 namespace owl {
 	std::mutex frame_lock;
@@ -47,6 +50,10 @@ namespace owl {
 		Correl correl[2];
 	}
 
+	namespace chess {
+		cv::Mat ref;
+	}
+
 	int run(std::string video_url, std::string ip, int port) {
 		#if __cplusplus >= 201703L
 			auto tmp_conn = Connection::from(ip, port);
@@ -80,6 +87,25 @@ namespace owl {
 				cv::Mat flipped_frame;
 				cv::flip(*frame, flipped_frame, 1);
 				frame_lock.unlock();
+
+				using Pixel = cv::Point3_<uint8_t>;
+				flipped_frame.forEach<Pixel>([](Pixel& pixel, const int* pos) -> void {
+					//return;
+					float diff = std::max(pixel.x, std::max(pixel.y, pixel.z)); //std::max(abs(pixel.x - pixel.y), std::max(abs(pixel.y - pixel.z), abs(pixel.z - pixel.x)));
+
+					float len = sqrt(
+						pixel.x * pixel.x +
+						pixel.y * pixel.y +
+						pixel.z * pixel.z
+					);
+					float sx = 255 * (pixel.x / len);
+					float sy = 255 * (pixel.y / len);
+					float sz = 255 * (pixel.z / len);
+
+					pixel.x = std::max(0.f, std::min(255.f, pixel.x + (sx - pixel.x) * (0.1f - diff / 200.f)));
+					pixel.y = std::max(0.f, std::min(255.f, pixel.y + (sy - pixel.y) * (0.1f - diff / 200.f)));
+					pixel.z = std::max(0.f, std::min(255.f, pixel.z + (sz - pixel.z) * (0.1f - diff / 200.f)));
+				});
 
 				cv::Mat cam_frames[2];
 				cam_frames[0] = flipped_frame(cv::Rect(0, 0, 640, 480));
@@ -117,6 +143,28 @@ namespace owl {
 							cv::Scalar(255, 0, 0), 2, 8, 0
 						);
 					}
+				} else if (conn.get_params().mode == Params::Mode::CAPTURE_CHESS) {
+					cam_frames[0].copyTo(chess::ref);
+
+					// Now that we've captured the target, switch to chess calibration mode
+					Params p = conn.get_params();
+					p.mode = Params::Mode::CHESS_CALIB;
+					conn.set_params(p);
+				}else if (conn.get_params().mode == Params::Mode::CHESS_CALIB) {
+					std::vector<cv::Point2f> chess_corners;
+					bool found = cv::findChessboardCorners(cam_frames[0], cv::Size(9,6), chess_corners);
+					if (found) {
+						std::vector<cv::Point2f> chess_ref_corners;
+						bool found = cv::findChessboardCorners(chess::ref, cv::Size(9,6), chess_ref_corners);
+						if (!found)
+							std::cout << "Everything is fucked.\n";
+
+						cv::drawChessboardCorners(cam_frames[0], cv::Size(9, 6), cv::Mat(chess_corners), true);
+						cv::Mat Hom = cv::findHomography(chess_corners, chess_ref_corners);
+						cv::Mat Planar;
+						cv::warpPerspective(cam_frames[0], Planar, Hom, chess::ref.size());
+						cv::imshow("test",Planar);
+					}
 				}
 
 				// Draw target rectangle
@@ -144,6 +192,7 @@ namespace owl {
 				case '5': params.mode = Params::Mode::CRAZY; break;
 				case '6': params.mode = Params::Mode::CONFUSED; break;
 				case '7': params.mode = Params::Mode::NECK_SINUSOIDAL; break;
+				case '8': params.mode = Params::Mode::CHESS_CALIB; break;
 				case 'a': {
 					params.eyes[0].x -= turn_rate;
 					params.eyes[1].x -= turn_rate;
@@ -169,6 +218,7 @@ namespace owl {
 				case 'e': params.neck -= turn_rate; break;
 				case 'x': running = false; break;
 				case 'c': params.mode = Params::Mode::CAPTURE; break;
+				case '#': params.mode = Params::Mode::CAPTURE_CHESS; break;
 				default: {
 					std::cerr << "Unrecognised key '" << key << "' pressed." << std::endl;
 					break;

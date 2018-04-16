@@ -41,6 +41,8 @@ namespace owl {
 			NECK_SINUSOIDAL,
 			CAPTURE, // Used to initiate correlation
 			CORRELATION,
+			CAPTURE_CHESS,
+			CHESS_CALIB,
 		};
 
 		Eye eyes[2];
