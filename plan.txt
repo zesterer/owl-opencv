@@ -1,0 +1,19 @@
+# Things to do
+
+[+] Chessboard
+	[+] Detection
+	[+] Homography
+	[-] Distance
+[-] Disparity
+	[-] Stitch images
+	[-] Depth map
+	[-] Calibrate depth map
+[-] Scene processing
+	[-] Stitch images for better information
+	[-] Use depth map to alter target scanning scale
+	[-] Saccadic movement (deciding where to look next)
+	[-] Detect target, look at it
+[-] Report
+	[-] Compare to human and animal vision systems
+	[-] Discuss HDR and reaction to varying light levels
+	[-] Review and compare to existing artificial vision systems
