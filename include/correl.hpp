@@ -51,6 +51,14 @@ namespace owl {
 			}
 		}
 	};
+
+    struct CorrelData {
+        cv::Mat templ;
+        cv::Rect rect;
+        Correl correl[2];
+
+        CorrelData() : rect(320 - 32, 240 - 32, 64, 64) {}
+    };
 }
 
 #endif

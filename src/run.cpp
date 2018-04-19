@@ -5,9 +5,12 @@
 
 // OpenCV
 #include <opencv2/core/core.hpp>
+//#include <opencv2/core/cvstd.hpp>
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/videoio.hpp>
 
 // Std
@@ -21,16 +24,56 @@ namespace owl {
     cv::Mat frame_buff[2];
     cv::Mat* frame = nullptr;
 
+    struct Chess {
+        cv::Mat ref;
+    };
+
+    struct CamData {
+        cv::Mat frames[2];
+    };
+
+    void adjust_colour(cv::Mat& mat) {
+        using Pixel = cv::Point3_<uint8_t>;
+            mat.forEach<Pixel>([](Pixel& pixel, const int* pos) -> void {
+            float diff = std::max(pixel.x, std::max(pixel.y, pixel.z));
+
+            float len = sqrt(
+                pixel.x * pixel.x +
+                pixel.y * pixel.y +
+                pixel.z * pixel.z
+            );
+            float sx = 255 * (pixel.x / len);
+            float sy = 255 * (pixel.y / len);
+            float sz = 255 * (pixel.z / len);
+
+            pixel.x = std::max(0.f, std::min(255.f, pixel.x + (sx - pixel.x) * (0.1f - diff / 200.f)));
+            pixel.y = std::max(0.f, std::min(255.f, pixel.y + (sy - pixel.y) * (0.1f - diff / 200.f)));
+            pixel.z = std::max(0.f, std::min(255.f, pixel.z + (sz - pixel.z) * (0.1f - diff / 200.f)));
+        });
+    }
+/*
+    void orthographic(CamData& cam_data){
+        cv::Ptr<SURF> detect = SURF::create(300);
+
+        std::vector<KeyPoint> L_keypoint, R_keypoint;
+        cv::Mat L_descript, R_descript;
+        detect->detectAndCompute(cam_data.frames[0],Mat(),L_keypoint,L_descript);
+        detect->detectAndCompute(cam_data.frames[1],Mat(),R_keypoint,R_descript);
+        cv::imshow("Descriptors", L_descript);
+    }
+*/
     void frame_thread_func(cv::VideoCapture& vcap) {
         // Switch between frame_buff[0] and frame_buff[1] to avoid copying
         for (int fb = 0;;fb = (fb == 0) ? 1 : 0) {
-            cv::Mat tmp_frame;
             // Check for errors when reading the next frame
             if (!vcap.read(frame_buff[fb])) {
                 continue;
             }
             else {
-                // We have a valid frame. Switch it out.
+                // We have a valid frame. Perform a colour adjustment on it
+                adjust_colour(frame_buff[fb]);
+
+                // Switch it with the active frame
                 frame_lock.lock();
                 frame = &frame_buff[fb];
                 frame_lock.unlock();
@@ -43,16 +86,65 @@ namespace owl {
         }
     }
 
-    // Correlation things
-    namespace correl {
-        cv::Mat templ;
-        cv::Rect rect(320 - 32, 240 - 32, 64, 64);
-        Correl correl[2];
+    Params::Mode correl_capture(CamData& cam_data, CorrelData& correl_data) {
+        correl_data.templ = cam_data.frames[0](correl_data.rect);
+        return Params::Mode::CORRELATION;
     }
 
-    namespace chess {
-        cv::Mat ref;
+    Params::Mode correl_process(CamData& cam_data, CorrelData& correl_data) {
+        cv::imshow("Correlation target", correl_data.templ);
+
+        // Attempt to match the correlation target
+        for (int i = 0; i < 2; i ++) {
+            correl_data.correl[i] = Correl::from_match(
+                cam_data.frames[i],
+                correl_data.templ,
+                correl_data.rect
+            );
+        }
+
+        for (int i = 0; i < 2; i ++) {
+            cv::rectangle(
+                cam_data.frames[i],
+                correl_data.correl[i].match,
+                cv::Point(
+                    correl_data.correl[i].match.x + correl_data.templ.cols,
+                    correl_data.correl[i].match.y + correl_data.templ.rows
+                ),
+                cv::Scalar(255, 0, 0), 2, 8, 0
+            );
+        }
+
+        return Params::Mode::CORRELATION;
     }
+
+    Params::Mode chess_capture(CamData& cam_data, Chess& chess) {
+        cam_data.frames[0].copyTo(chess.ref);
+        return Params::Mode::CHESS_CALIB;
+    }
+
+    Params::Mode chess_calib(Connection& conn, CamData& cam_data, Chess& chess) {
+        std::vector<cv::Point2f> chess_corners;
+        bool found = cv::findChessboardCorners(cam_data.frames[0], cv::Size(9,6), chess_corners);
+        if (found) {
+            std::vector<cv::Point2f> chess_ref_corners;
+            bool found = cv::findChessboardCorners(chess.ref, cv::Size(9,6), chess_ref_corners);
+            if (found) {
+                for (int i = 0; i < chess_corners.size(); i ++) {
+                    auto p = chess_corners[i];
+                    cv::rectangle(cam_data.frames[0], cv::Rect(p.x - 4, p.y - 4, 8, 8), cv::Scalar(0, i * 5, 0), 2, 8, 0);
+                }
+                //cv::drawChessboardCorners(cam_frames[0], cv::Size(9, 6), cv::Mat(chess_corners), true);
+                cv::Mat Hom = cv::findHomography(chess_corners, chess_ref_corners);
+                cv::Mat Planar;
+                cv::warpPerspective(cam_data.frames[0], Planar, Hom, chess.ref.size());
+                cv::imshow("test",Planar);
+            }
+        }
+        return Params::Mode::CHESS_CALIB;
+    }
+
+
 
     int run(std::string video_url, std::string ip, int port) {
         #if __cplusplus >= 201703L
@@ -74,13 +166,16 @@ namespace owl {
             return 2;
         }
 
+        CamData cam_data;
+        CorrelData correl_data;
+        Chess chess;
+
         // Spawn a thread to collect frames
         std::thread frame_thread(frame_thread_func, std::ref(vcap));
 
         // Main execution loop
         bool running = true;
         while (running) {
-
             // Get the current frame, flip it and split it
             frame_lock.lock();
             if (frame != nullptr) { // it's a valid frame
@@ -88,104 +183,46 @@ namespace owl {
                 cv::flip(*frame, flipped_frame, 1);
                 frame_lock.unlock();
 
-                using Pixel = cv::Point3_<uint8_t>;
-                flipped_frame.forEach<Pixel>([](Pixel& pixel, const int* pos) -> void {
-                    float diff = std::max(pixel.x, std::max(pixel.y, pixel.z)); //std::max(abs(pixel.x - pixel.y), std::max(abs(pixel.y - pixel.z), abs(pixel.z - pixel.x)));
+                cam_data.frames[0] = flipped_frame(cv::Rect(0, 0, 640, 480));
+                cam_data.frames[1] = flipped_frame(cv::Rect(640, 0, 640, 480));
 
-                    float len = sqrt(
-                        pixel.x * pixel.x +
-                        pixel.y * pixel.y +
-                        pixel.z * pixel.z
-                    );
-                    float sx = 255 * (pixel.x / len);
-                    float sy = 255 * (pixel.y / len);
-                    float sz = 255 * (pixel.z / len);
-
-                    pixel.x = std::max(0.f, std::min(255.f, pixel.x + (sx - pixel.x) * (0.1f - diff / 200.f)));
-                    pixel.y = std::max(0.f, std::min(255.f, pixel.y + (sy - pixel.y) * (0.1f - diff / 200.f)));
-                    pixel.z = std::max(0.f, std::min(255.f, pixel.z + (sz - pixel.z) * (0.1f - diff / 200.f)));
-                });
-
-                cv::Mat cam_frames[2];
-                cam_frames[0] = flipped_frame(cv::Rect(0, 0, 640, 480));
-                cam_frames[1] = flipped_frame(cv::Rect(640, 0, 640, 480));
-
-                // Deal with correlation things
+                // Handle modes
+                Params::Mode nmode = conn.get_params().mode;
                 if (conn.get_params().mode == Params::Mode::CAPTURE) {
-                    correl::templ = cam_frames[0](correl::rect);
-
-                    // Now that we've captured the target, switch to correlation mode
-                    Params p = conn.get_params();
-                    p.mode = Params::Mode::CORRELATION;
-                    conn.set_params(p);
+                    nmode = correl_capture(cam_data, correl_data);
                 }
                 else if (conn.get_params().mode == Params::Mode::CORRELATION) {
-                    cv::imshow("Correlation target", correl::templ);
-
-                    // Attempt to match the correlation target
-                    for (int i = 0; i < 2; i ++) {
-                        correl::correl[i] = Correl::from_match(
-                            cam_frames[i],
-                            correl::templ,
-                            correl::rect
-                        );
-                    }
-
-                    for (int i = 0; i < 2; i ++) {
-                        cv::rectangle(
-                            cam_frames[i],
-                            correl::correl[i].match,
-                            cv::Point(
-                                correl::correl[i].match.x + correl::templ.cols,
-                                correl::correl[i].match.y + correl::templ.rows
-                            ),
-                            cv::Scalar(255, 0, 0), 2, 8, 0
-                        );
-                    }
-                } else if (conn.get_params().mode == Params::Mode::CAPTURE_CHESS) {
-                    cam_frames[0].copyTo(chess::ref);
-
-                    // Now that we've captured the target, switch to chess calibration mode
-                    Params p = conn.get_params();
-                    p.mode = Params::Mode::CHESS_CALIB;
-                    conn.set_params(p);
-                } else if (conn.get_params().mode == Params::Mode::CHESS_CALIB) {
-                    std::vector<cv::Point2f> chess_corners;
-                    bool found = cv::findChessboardCorners(cam_frames[0], cv::Size(9,6), chess_corners);
-                    if (found) {
-                        std::vector<cv::Point2f> chess_ref_corners;
-                        bool found = cv::findChessboardCorners(chess::ref, cv::Size(9,6), chess_ref_corners);
-                        if (found) {
-                            for (int i = 0; i < chess_corners.size(); i ++) {
-                                auto p = chess_corners[i];
-                                cv::rectangle(cam_frames[0], cv::Rect(p.x - 4, p.y - 4, 8, 8), cv::Scalar(0, i * 5, 0), 2, 8, 0);
-                            }
-                            //cv::drawChessboardCorners(cam_frames[0], cv::Size(9, 6), cv::Mat(chess_corners), true);
-                            cv::Mat Hom = cv::findHomography(chess_corners, chess_ref_corners);
-                            cv::Mat Planar;
-                            cv::warpPerspective(cam_frames[0], Planar, Hom, chess::ref.size());
-                            cv::imshow("test",Planar);
-                        }
-                    }
+                    nmode = correl_process(cam_data, correl_data);
                 }
+                else if (conn.get_params().mode == Params::Mode::CAPTURE_CHESS) {
+                    nmode = chess_capture(cam_data, chess);
+                }
+                else if (conn.get_params().mode == Params::Mode::CHESS_CALIB) {
+                    nmode = chess_calib(conn, cam_data, chess);
+                }
+
+                // Set new mode
+                Params p = conn.get_params();
+                p.mode = nmode;
+                conn.set_params(p);
 
                 // Draw target rectangle
                 for (int i = 0; i < 2; i ++) {
-                    cv::rectangle(cam_frames[i], correl::rect, cv::Scalar::all(255), 2, 8, 0);
+                    cv::rectangle(cam_data.frames[i], correl_data.rect, cv::Scalar::all(255), 2, 8, 0);
                 }
 
-                cv::imshow("Left Camera (0)", cam_frames[0]);
-                cv::imshow("Right Camera (1)", cam_frames[1]);
+                cv::imshow("Left Camera (0)", cam_data.frames[0]);
+                cv::imshow("Right Camera (1)", cam_data.frames[1]);
             }
             else {
                 frame_lock.unlock();
             }
 
-            Params params = conn.get_params_lock();
-
             // Wait for 1 ms or handle any key presses
             const int turn_rate = 10;
-            switch (auto key = cv::waitKey(1)) {
+            auto key = cv::waitKey(1);
+            Params params = conn.get_params_lock();
+            switch (key) {
                 case -1: break;
                 case '1': params.mode = Params::Mode::CONTROL; break;
                 case '2': params.mode = Params::Mode::SINUSOIDAL; break;
@@ -230,8 +267,8 @@ namespace owl {
             if (params.mode == Params::Mode::CORRELATION) {
                 // TODO: Add tracking code here
                 for (int i = 0; i < 2; i ++) {
-                    params.eyes[i].x += (correl::correl[i].match.x - correl::rect.x) * 0.1;
-                    params.eyes[i].y += (i == 0 ? 1 : -1) * (correl::correl[i].match.y - correl::rect.y) * 0.1;
+                    params.eyes[i].x += (correl_data.correl[i].match.x - correl_data.rect.x) * 0.1;
+                    params.eyes[i].y += (i == 0 ? 1 : -1) * (correl_data.correl[i].match.y - correl_data.rect.y) * 0.1;
                 }
             }
 

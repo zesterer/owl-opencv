@@ -146,13 +146,16 @@ namespace owl {
             #ifdef __WIN32__
 			    int smsg=send(conn.sock,packet.str().c_str(),packet.str().length(),0);
 				if(smsg==SOCKET_ERROR){
-					std::cout<<"Error: "<<WSAGetLastError()<<std::endl;
-					WSACleanup();
+                    std::cerr << "Error: " << WSAGetLastError() << std::endl;
+                    //WSACleanup();
+                    WSASetLastError(0);
+                    continue;
 				}
 				char recv_buff[2];
 				int N=recv(conn.sock,recv_buff,2,0);
 				if(N==SOCKET_ERROR){
-					std::cout<<"Error in Receiving: "<<WSAGetLastError()<<std::endl;
+                    std::cerr << "Error in Receiving: " << WSAGetLastError() << std::endl;
+                    continue;
 				}
             #else
 			    // Attempt to send the packet
